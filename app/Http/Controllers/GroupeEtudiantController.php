@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Etudiant;
 use App\Models\Groupe;
+use App\Models\GroupeEtudiant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class GroupeEtudiantController extends Controller
 {
-    // private $groupes = [];
     public function store(Request $request)
     {
         $etudiants = $request->etudiants;
@@ -25,15 +25,14 @@ class GroupeEtudiantController extends Controller
         // dd($newGroupes);
 
         try {
-            DB::beginTransaction();
+
             //  changer tout les groupe qui etait active a inactive
             $this->archiveOldGroupe();
 
             //creation des nouveau groupe
             $this->creationDeGroupeMembre($newGroupes);
-            DB::commit();
         } catch (\Throwable $th) {
-            //throw $th;
+            // Db::rollBack();
         }
     }
 
@@ -41,7 +40,6 @@ class GroupeEtudiantController extends Controller
     {
         $nombreGroupe = ceil(count($etudiants) / $nombrePersonneParGroupe);
 
-        // dd($nombreGroupe);
         $groupes = [];
         for ($i = 0; $i < $nombreGroupe; $i++) {
             $groupes[$i] = [];
@@ -49,7 +47,6 @@ class GroupeEtudiantController extends Controller
 
         //on parcour la liste des arrays puis a chaque array on fait un shuflle et on ajoute jusqua atteindre le nombre de personne par groupe et on passe au groupe suivant
         for ($i = 0; $i < count($groupes); $i++) {
-            // dd(count($groupes[$i]));die;
             while (count($groupes[$i]) < $nombrePersonneParGroupe && count($etudiants) > 0) {
                 shuffle($etudiants);
                 $groupes[$i][] = $etudiants[0];
@@ -77,19 +74,33 @@ class GroupeEtudiantController extends Controller
         foreach ($groupe as  $membres) {
             $lettres[] =  $membres["nomComplet"][0];
         }
-        //  dd($lettres);
 
         return $lettres;
     }
 
     function creationDeGroupeMembre(array $newGroupe)
     {
-    
-        foreach ($newGroupe as $groupe) {
-            Groupe::create([
-                'nom'    => $groupe['nom'],
-                'statut' => 1,
-            ]);
+        DB::beginTransaction();
+        try {
+            foreach ($newGroupe as $groupe) {
+                Groupe::create([
+                    'nom'    => $groupe['nom'],
+                    'statut' => 1,
+                ]);
+
+                $currentGroupe = Groupe::where('nom', $groupe['nom'])->first();
+                unset($groupe['nom']);
+                foreach ($groupe as $membre) {
+                    GroupeEtudiant::create([
+                        'etudiant_id' => $membre["id"],
+                        'groupe_id' => $currentGroupe->id
+                    ]);
+                }
+            }
+
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
         }
     }
 }
