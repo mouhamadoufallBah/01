@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Etudiant;
 use App\Models\Groupe;
 use App\Models\GroupeEtudiant;
 use Illuminate\Http\Request;
@@ -12,34 +11,41 @@ class GroupeEtudiantController extends Controller
 {
     public function store(Request $request)
     {
+        $request->validate([
+            'nombrePersonneParGroupe' => 'required|integer'
+        ]);
+        
         $etudiants = $request->etudiants;
         $nombrePersonneParGroupe = $request->nombrePersonneParGroupe;
 
         $newGroupes = $this->createGroupe($nombrePersonneParGroupe, $etudiants);
 
+        DB::beginTransaction();
         foreach ($newGroupes as &$groupe) {
             $groupe['nom'] = $this->createGroupeName($groupe);
             $groupe['nom'] = implode('', $groupe['nom']);
         }
 
-        // dd($newGroupes);
-
         try {
-
             //  changer tout les groupe qui etait active a inactive
             $this->archiveOldGroupe();
 
             //creation des nouveau groupe
             $this->creationDeGroupeMembre($newGroupes);
+            DB::commit();
         } catch (\Throwable $th) {
-            // Db::rollBack();
+            DB::rollBack();
         }
     }
 
     function createGroupe(int $nombrePersonneParGroupe, array $etudiants)
     {
         $nombreGroupe = ceil(count($etudiants) / $nombrePersonneParGroupe);
+        $sommeDesNiveau = $this->sommeDesNiveau($etudiants);
+        $moyenNiveau = $sommeDesNiveau / $nombreGroupe; 
 
+
+        // dd($moyenNiveau);
         $groupes = [];
         for ($i = 0; $i < $nombreGroupe; $i++) {
             $groupes[$i] = [];
@@ -56,6 +62,16 @@ class GroupeEtudiantController extends Controller
         }
 
         return $groupes;
+    }
+
+    function sommeDesNiveau(array $etudiants)
+    {
+        $sommeDesNiveau = 0;
+        foreach ($etudiants as $etudiant) {
+            $sommeDesNiveau += $etudiant["niveau"];
+        }
+
+        return $sommeDesNiveau;
     }
 
     function archiveOldGroupe()

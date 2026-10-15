@@ -29,6 +29,7 @@ class EtudiantController extends Controller
 
     public function store(Request $request)
     {
+        // dd($request);
         $validated = $request->validate([
             'nomComplet' => 'required|string|max:255',
             'sexe'       => 'required|string|in:Masculin,6',

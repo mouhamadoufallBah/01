@@ -381,6 +381,7 @@ function createGroupe() {
                 placeholder="Ex: 3"
                 class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
+              <span v-if="formGroup.errors.nombrePersonneParGroupe" class="text-pink-900">{{ formGroup.errors.nombrePersonneParGroupe }}</span>
             </div>
 
             <!-- Actions -->
